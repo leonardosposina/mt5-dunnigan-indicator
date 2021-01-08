@@ -6,13 +6,7 @@
 
 #property copyright "Copyright 2019, Leonardo Sposina."
 #property link      "https://www.mql5.com/en/users/leonardo_splinter/seller"
-#property version   "1.1"
-
-enum ENUM_DUNNIGAN_SIGNAL {
-  NEUTRAL,
-  BUY,
-  SELL
-};
+#property version   "1.2"
 
 class Dunnigan {
 
@@ -22,14 +16,12 @@ class Dunnigan {
     string label;
 
   public:
-
+    
     Dunnigan(int bufferIndex, string title, int arrowIcon, int shift);
- 
+    
     void setValue(int index, double value);
     void showComment(void);
     void resetBuffer(void);
-
-    static ENUM_DUNNIGAN_SIGNAL lastSignal;
 
 };
 

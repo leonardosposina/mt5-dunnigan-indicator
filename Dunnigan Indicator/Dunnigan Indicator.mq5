@@ -5,6 +5,11 @@
 //+------------------------------------------------------------------+
 
 #include "Dunnigan.mqh"
+#include "DunniganSignal.mqh"
+
+#define ICON_ARROW_UP 225
+#define ICON_ARROW_DOWN 226
+#define ICON_SHIFT 6
 
 enum ENUM_COUNT_DAYS {
   today           = 0,  // today
@@ -18,8 +23,6 @@ enum ENUM_COUNT_DAYS {
 
 input ENUM_COUNT_DAYS Starting_Calculation_Period = past_one_day; // Starting calculation period
 
-ENUM_DUNNIGAN_SIGNAL Dunnigan::lastSignal = NEUTRAL;
-
 Dunnigan* dunniganBuy;
 Dunnigan* dunniganSell;
 
@@ -28,10 +31,6 @@ datetime calculatedTimestamp;
 int currentCandleIndex = 0;
 
 int OnInit() {
-  const uint ICON_ARROW_UP = 225;
-  const uint ICON_ARROW_DOWN = 226;
-  const int ICON_SHIFT = 6;
-  
   dunniganBuy = new Dunnigan(0, "Dunnigan - Buy signal", ICON_ARROW_UP, ICON_SHIFT);
   dunniganSell = new Dunnigan(1, "Dunnigan - Sell signal", ICON_ARROW_DOWN, -ICON_SHIFT);
 
@@ -64,30 +63,24 @@ int OnCalculate(
 
   if (firstCandleShiftIndex <= 0) 
     return(rates_total);
-    
+
   if (isNewCandle(rates_total)) {
     dunniganBuy.resetBuffer();
     dunniganSell.resetBuffer();
   }
 
   for (int i = rates_total - firstCandleShiftIndex; i < rates_total; i++) {
-    
+
     Comment("");
     
-    if (Dunnigan::lastSignal != BUY) {
-      if (isBuySignal(i, low, high, open, close) && isTickVolumeHigher(i, tick_volume)) {
-        dunniganBuy.setValue(i, high[i - 1]);
-        dunniganBuy.showComment();
-        Dunnigan::lastSignal = BUY;
-      }
-    }
-    
-    if (Dunnigan::lastSignal != SELL) {
-      if (isSellSignal(i, low, high, open, close) && isTickVolumeHigher(i, tick_volume)) {
-        dunniganSell.setValue(i, low[i - 1]);
-        dunniganSell.showComment();
-        Dunnigan::lastSignal = SELL;
-      }
+    ENUM_DUNNIGAN_SIGNAL signal = DunniganSignal::check(i, low, high, open, close);
+
+    if (signal == DUNNIGAN_SIGNAL_BUY && isTickVolumeHigher(i, tick_volume)) {
+      dunniganBuy.setValue(i, high[i - 1]);
+      dunniganBuy.showComment();
+    } else if (signal == DUNNIGAN_SIGNAL_SELL &&isTickVolumeHigher(i, tick_volume)) {
+      dunniganSell.setValue(i, low[i - 1]);
+      dunniganSell.showComment();
     }
   }
 
@@ -95,14 +88,13 @@ int OnCalculate(
 }
 
 bool isNewCandle(int ratesTotal) {
-  bool result = false;
-  
+
   if (currentCandleIndex != ratesTotal) {
     currentCandleIndex = ratesTotal;
-    result = true;
+    return true;
   }
-    
-  return result;
+
+  return false;
 }
 
 datetime createPastTimestampWithoutHour(int pastDays) {
@@ -112,24 +104,8 @@ datetime createPastTimestampWithoutHour(int pastDays) {
   timestamp.hour = 0;
   timestamp.min = 0;
   timestamp.sec = 0;
-  
+
   return StructToTime(timestamp);
-}
-
-bool isBuySignal (int i, const double &min[], const double &max[], const double &open[], const double &close[]) {
-  return (
-    min[i] > min[i - 1] && 
-    max[i] > max[i - 1] &&
-    close[i] > max[i -1]
-  );
-}
-
-bool isSellSignal (int i, const double &min[], const double &max[], const double &open[], const double &close[]) {
-  return (
-    min[i] < min[i - 1] &&
-    max[i] < max[i - 1] &&
-    close[i] < min[i - 1]
-  );
 }
 
 bool isTickVolumeHigher(int index, const long &volume[]) {
